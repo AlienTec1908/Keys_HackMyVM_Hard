@@ -5,7 +5,7 @@
 ## Übersicht
 
 *   **VM:** Keys
-*   **Plattform:** [HackMyVM](https://hackmyvm.eu/machines/machine.php?vm=Keys)
+*   **Plattform:**(https://hackmyvm.eu/machines/machine.php?vm=Keys)
 *   **Schwierigkeit:** Hard
 *   **Autor der VM:** DarkSpirit
 *   **Datum des Writeups:** 13. Oktober 2022
